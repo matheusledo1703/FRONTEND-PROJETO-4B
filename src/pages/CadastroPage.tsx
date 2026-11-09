@@ -1,75 +1,80 @@
 import { useState } from "react";
 import type { SyntheticEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
-import { api } from "../api/axios";
+import { toast } from "react-toastify";
+import { api, tratarErro } from "../api/axios";
 import { Campo } from "../componentes/Campo";
-import { cadastroSchema } from "../utils/validadores";
-import type { Erros, UsuarioForm } from "../types/usuario";
-
-const vazio: UsuarioForm = { nome: "", email: "", cpf: "", senha: "", confirmarSenha: "" };
+import { cadastroSchema, errosDoZod, formatarCpf, nivelDaSenha } from "../utils";
 
 export function CadastroPage() {
-  const navigate = useNavigate();
-  const [form, setForm] = useState<UsuarioForm>(vazio);
-  const [erros, setErros] = useState<Erros>({});
-  const [erroApi, setErroApi] = useState("");
+    const navigate = useNavigate();
+    const [form, setForm] = useState({ nome: "", email: "", cpf: "", senha: "", confirmarSenha: "" });
+    const [erros, setErros] = useState<Record<string, string>>({});
+    const [loading, setLoading] = useState(false);
 
-  function alterar(name: string, valor: string) {
-    setForm({ ...form, [name]: valor });
-  }
-
-  async function enviar(event: SyntheticEvent) {
-    event.preventDefault();
-    setErroApi("");
-
-    // Validação no front (zod)
-    const resultado = cadastroSchema.safeParse(form);
-    if (!resultado.success) {
-      const novos: Erros = {};
-      for (const issue of resultado.error.issues) {
-        const campo = issue.path[0] as keyof UsuarioForm;
-        if (!novos[campo]) novos[campo] = issue.message;
-      }
-      setErros(novos);
-      return;
+    function alterar(campo: string, valor: string) {
+        setForm({ ...form, [campo]: campo === "cpf" ? formatarCpf(valor) : valor });
+        setErros({ ...erros, [campo]: "" });
     }
-    setErros({});
 
-    try {
-      await api.post("/users", {
-        nome: form.nome,
-        email: form.email,
-        cpf: form.cpf,
-        password: form.senha,
-      });
-      navigate("/login"); // redireciona para o login após o cadastro
-    } catch (error) {
-      // Mensagens de erro da API de forma amigável
-      if (axios.isAxiosError(error) && error.response) {
-        const { campo, mensagem } = error.response.data;
-        if (campo) setErros({ [campo]: mensagem });
-        else setErroApi(mensagem ?? "Não foi possível concluir o cadastro");
-      } else {
-        setErroApi("Não foi possível conectar ao servidor. Tente novamente.");
-      }
+    async function onFormSubmit(event: SyntheticEvent) {
+        event.preventDefault();
+
+        // 1) valida no front
+        const resultado = cadastroSchema.safeParse(form);
+
+        if (!resultado.success) {
+            setErros(errosDoZod(resultado.error));
+            return;
+        }
+
+        // 2) envia para a API (a confirmação de senha fica só no front)
+        setLoading(true);
+
+        try {
+            await api.post("/usuarios", { nome: form.nome, email: form.email, cpf: form.cpf, senha: form.senha });
+
+            toast.success("Conta criada! Agora é só entrar.");
+            navigate("/login", { state: { email: form.email } });
+        } catch (erro) {
+            // 3) erro da API: com campo vai embaixo do campo, sem campo vai em um aviso
+            const { mensagem, campo } = tratarErro(erro);
+
+            if (campo && campo in form) {
+                setErros({ [campo]: mensagem });
+            } else {
+                toast.error(mensagem);
+            }
+        } finally {
+            setLoading(false);
+        }
     }
-  }
 
-  return (
-    <form className="cadastro" onSubmit={enviar}>
-      <h1>Criar conta</h1>
+    return (
+        <form onSubmit={onFormSubmit} className="cartao" noValidate>
+            <img src="/favicon.svg" alt="" className="coracao" />
+            <h1>Criar conta</h1>
+            <p className="dica">Todos os campos são obrigatórios.</p>
 
-      <Campo label="Nome" name="nome" value={form.nome} erro={erros.nome} onChange={alterar} />
-      <Campo label="Email" name="email" value={form.email} erro={erros.email} onChange={alterar} />
-      <Campo label="CPF" name="cpf" value={form.cpf} erro={erros.cpf} onChange={alterar} />
-      <Campo label="Senha" name="senha" type="password" value={form.senha} erro={erros.senha} onChange={alterar} />
-      <Campo label="Confirmar senha" name="confirmarSenha" type="password" value={form.confirmarSenha} erro={erros.confirmarSenha} onChange={alterar} />
+            <Campo label="Nome completo" name="nome" value={form.nome} onChange={alterar} erro={erros.nome} />
+            <Campo label="E-mail" name="email" type="email" value={form.email} onChange={alterar} erro={erros.email} />
+            <Campo label="CPF" name="cpf" value={form.cpf} onChange={alterar} erro={erros.cpf} />
+            <Campo
+                label="Senha"
+                name="senha"
+                type="password"
+                value={form.senha}
+                onChange={alterar}
+                erro={erros.senha}
+                dica={form.senha ? `Senha ${nivelDaSenha(form.senha)}` : "8 caracteres ou mais, misturando minúscula, maiúscula, número e símbolo."}
+            />
+            <Campo label="Repita a senha" name="confirmarSenha" type="password" value={form.confirmarSenha} onChange={alterar} erro={erros.confirmarSenha} />
 
-      {erroApi && <p className="erro">{erroApi}</p>}
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+                {loading ? "Aguarde..." : "Criar conta"}
+            </button>
 
-      <button type="submit">Cadastrar</button>
-      <p>Já tem conta? <Link to="/login">Entrar</Link></p>
-    </form>
-  );
+            <p>Já tem conta? <Link to="/login">Entrar</Link></p>
+        </form>
+    );
 }
