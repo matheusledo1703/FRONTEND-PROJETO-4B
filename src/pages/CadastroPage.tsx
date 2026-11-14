@@ -3,6 +3,8 @@ import type { SyntheticEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { api, tratarErro } from "../api/axios";
+import { BotaoEnviar } from "../componentes/BotaoEnviar";
+import { CartaoDeFormulario } from "../componentes/CartaoDeFormulario";
 import { Campo } from "../componentes/Campo";
 import { cadastroSchema, errosDoZod, formatarCpf, nivelDaSenha } from "../utils";
 
@@ -51,10 +53,7 @@ export function CadastroPage() {
     }
 
     return (
-        <form onSubmit={onFormSubmit} className="cartao" noValidate>
-            <img src="/favicon.svg" alt="" className="coracao" />
-            <h1>Criar conta</h1>
-            <p className="dica">Todos os campos são obrigatórios.</p>
+        <CartaoDeFormulario titulo="Criar conta" dica="Todos os campos são obrigatórios." onSubmit={onFormSubmit} coracao>
 
             <Campo label="Nome completo" name="nome" value={form.nome} onChange={alterar} erro={erros.nome} />
             <Campo label="E-mail" name="email" type="email" value={form.email} onChange={alterar} erro={erros.email} />
@@ -70,11 +69,9 @@ export function CadastroPage() {
             />
             <Campo label="Repita a senha" name="confirmarSenha" type="password" value={form.confirmarSenha} onChange={alterar} erro={erros.confirmarSenha} />
 
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? "Aguarde..." : "Criar conta"}
-            </button>
+            <BotaoEnviar texto="Criar conta" carregando={loading} />
 
             <p>Já tem conta? <Link to="/login">Entrar</Link></p>
-        </form>
+        </CartaoDeFormulario>
     );
 }

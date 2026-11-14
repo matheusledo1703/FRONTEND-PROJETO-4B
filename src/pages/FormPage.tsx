@@ -3,12 +3,15 @@ import type { SyntheticEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { api, tratarErro } from "../api/axios";
+import { BotaoEnviar } from "../componentes/BotaoEnviar";
+import { CartaoDeFormulario } from "../componentes/CartaoDeFormulario";
 import { Campo } from "../componentes/Campo";
+import { CampoFoto } from "../componentes/CampoFoto";
 import type { Opcao } from "../componentes/Campo";
 import { RECURSOS } from "../recursos";
 import type { Recurso } from "../recursos";
 import type { Pagina, Registro } from "../types";
-import { errosDoZod } from "../utils";
+import { errosDoZod, guardarFoto, lerFoto } from "../utils";
 import { NotFoundPage } from "./NotFoundPage";
 
 // Cadastro e edição de qualquer recurso (se a rota tem :id, é edição)
@@ -41,7 +44,10 @@ function Formulario({ recurso }: { recurso: Recurso }) {
         try {
             const resposta = await api.get<Registro>(`/${recurso.caminho}/${id}`);
 
-            setForm(Object.fromEntries(recurso.campos.map((campo) => [campo.nome, String(resposta.data[campo.nome] ?? "")])));
+            setForm(Object.fromEntries(recurso.campos.map((campo) => [
+                campo.nome,
+                campo.tipo === "foto" ? lerFoto(recurso.caminho, resposta.data.id) : String(resposta.data[campo.nome] ?? "")
+            ])));
         } catch (e) {
             toast.error(tratarErro(e).mensagem);
             navigate(`/${recurso.caminho}`, { replace: true });
@@ -72,10 +78,19 @@ function Formulario({ recurso }: { recurso: Recurso }) {
         setLoading(true);
 
         try {
+            // O schema não tem a foto, então ela não vai para a API: fica salva no navegador, ligada ao id
+            const campoFoto = recurso.campos.find((campo) => campo.tipo === "foto");
+            let idSalvo: number | string | undefined = id;
+
             if (editando) {
                 await api.put(`/${recurso.caminho}/${id}`, resultado.data);
             } else {
-                await api.post(`/${recurso.caminho}`, resultado.data);
+                const resposta = await api.post<Registro>(`/${recurso.caminho}`, resultado.data);
+                idSalvo = resposta.data?.id;
+            }
+
+            if (campoFoto && idSalvo !== undefined && !guardarFoto(recurso.caminho, idSalvo, form[campoFoto.nome])) {
+                toast.warn("O cadastro foi salvo, mas a foto não coube no navegador. Tente uma imagem menor.");
             }
 
             toast.success(editando ? recurso.mensagens.editado : recurso.mensagens.criado);
@@ -94,10 +109,19 @@ function Formulario({ recurso }: { recurso: Recurso }) {
     }
 
     return (
-        <form onSubmit={onFormSubmit} className="cartao" noValidate>
-            <h1>{editando ? `Editar ${recurso.singular}` : recurso.novo}</h1>
+        <CartaoDeFormulario titulo={editando ? `Editar ${recurso.singular}` : recurso.novo} onSubmit={onFormSubmit}>
 
-            {recurso.campos.map((campo) => (
+            {recurso.campos.map((campo) => campo.tipo === "foto" ? (
+                <CampoFoto
+                    key={campo.nome}
+                    label={campo.rotulo}
+                    name={campo.nome}
+                    value={form[campo.nome]}
+                    onChange={alterar}
+                    erro={erros[campo.nome]}
+                    dica="JPG, PNG ou WebP, até 5 MB."
+                />
+            ) : (
                 <Campo
                     key={campo.nome}
                     label={campo.rotulo}
@@ -113,14 +137,12 @@ function Formulario({ recurso }: { recurso: Recurso }) {
             ))}
 
             <div className="acoes">
-                <button type="submit" className="btn btn-primary" disabled={loading}>
-                    {loading ? "Aguarde..." : "Salvar"}
-                </button>
+                <BotaoEnviar texto="Salvar" carregando={loading} />
                 <button type="button" className="btn btn-secondary" onClick={() => navigate(`/${recurso.caminho}`)}>
                     Cancelar
                 </button>
             </div>
-        </form>
+        </CartaoDeFormulario>
     );
 }
 

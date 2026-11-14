@@ -15,7 +15,7 @@ export type Recurso = {
     campos: {
         nome: string;
         rotulo: string;
-        tipo?: "text" | "number" | "email";
+        tipo?: "text" | "number" | "email" | "foto"; // "foto": envio de imagem (fica salva no navegador, a API não guarda)
         padrao?: string;
         soNaCriacao?: boolean; // não muda na edição
         opcoes?: { caminho: string; rotulo: (item: Registro) => string }; // relacionamento: vira <select>
@@ -33,6 +33,13 @@ const numero = (mensagem: string) =>
         .min(1, mensagem)
         .transform((valor) => Number(valor.replace(",", ".")))
         .refine((valor) => Number.isFinite(valor), mensagem);
+
+// Custo é opcional: vazio não vai para a API (na edição, o back-end mantém o custo que já existia)
+const custoOpcional = z
+    .string()
+    .trim()
+    .transform((valor) => (valor === "" ? undefined : Number(valor.replace(",", "."))))
+    .refine((valor) => valor === undefined || (Number.isFinite(valor) && valor >= 0), "O custo precisa ser um número maior ou igual a zero.");
 
 const escolha = (mensagem: string) => numero(mensagem).refine((valor) => Number.isInteger(valor) && valor >= 1, mensagem);
 
@@ -62,18 +69,23 @@ export const RECURSOS: Record<string, Recurso> = {
         colunas: [
             { titulo: "Produto", valor: (p) => texto(p, "nome") },
             { titulo: "Categoria", valor: (p) => texto(p, "categoriaNome") },
-            { titulo: "Preço", valor: (p) => moeda(Number(p.preco)), direita: true }
+            { titulo: "Preço", valor: (p) => moeda(Number(p.preco)), direita: true },
+            { titulo: "Custo", valor: (p) => moeda(Number(p.custo ?? 0)), direita: true }
         ],
         campos: [
             { nome: "nome", rotulo: "Nome" },
             { nome: "descricao", rotulo: "Descrição (opcional)" },
             { nome: "preco", rotulo: "Preço (R$)", tipo: "number" },
-            { nome: "categoriaId", rotulo: "Categoria", opcoes: { caminho: "categorias", rotulo: (c) => texto(c, "nome") } }
+            { nome: "custo", rotulo: "Custo (R$, opcional)", tipo: "number" },
+            { nome: "categoriaId", rotulo: "Categoria", opcoes: { caminho: "categorias", rotulo: (c) => texto(c, "nome") } },
+            { nome: "foto", rotulo: "Foto do produto (opcional)", tipo: "foto" }
         ],
+        // "foto" não entra no schema de propósito: não vai para a API (ver FormPage)
         schema: z.object({
             nome: nome(120),
             descricao: z.string().trim().max(255, "A descrição pode ter no máximo 255 letras."),
             preco: numero("Informe o preço.").refine((valor) => valor >= 0, "O preço não pode ser negativo."),
+            custo: custoOpcional,
             categoriaId: escolha("Escolha uma categoria.")
         })
     },
@@ -113,7 +125,8 @@ export const RECURSOS: Record<string, Recurso> = {
             { titulo: "Cliente", valor: (p) => texto(p, "clienteNome") },
             { titulo: "Produto", valor: (p) => texto(p, "produtoNome") },
             { titulo: "Qtd.", valor: (p) => texto(p, "quantidade"), direita: true },
-            { titulo: "Total", valor: (p) => moeda(Number(p.total)), direita: true }
+            { titulo: "Total", valor: (p) => moeda(Number(p.total)), direita: true },
+            { titulo: "Lucro", valor: (p) => moeda(Number(p.lucro ?? 0)), direita: true }
         ],
         campos: [
             { nome: "clienteId", rotulo: "Cliente", opcoes: { caminho: "clientes", rotulo: (c) => texto(c, "nome") } },

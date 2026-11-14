@@ -15,11 +15,17 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
-// Se a API recusar o token (venceu ou é falso), volta para o login
+// Se a API recusar o token (venceu ou é falso), volta para o login.
+// Visitante sem token (loja pública) não é redirecionado.
 api.interceptors.response.use(
     (resposta) => resposta,
     (erro: unknown) => {
-        if (axios.isAxiosError(erro) && erro.response?.status === 401 && !erro.config?.url?.endsWith("/login")) {
+        if (
+            axios.isAxiosError(erro) &&
+            erro.response?.status === 401 &&
+            localStorage.getItem("token") &&
+            !erro.config?.url?.endsWith("/login")
+        ) {
             localStorage.removeItem("token");
             localStorage.removeItem("usuario");
             window.location.href = "/login";

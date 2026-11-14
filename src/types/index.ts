@@ -28,6 +28,8 @@ export type Venda = {
   produtoNome: string;
   categoriaNome: string;
   precoUnitario: number;
+  custoUnitario: number;
   quantidade: number;
   total: number;
+  lucro: number;
 };

@@ -1,8 +1,10 @@
 import { useState } from "react";
 import type { SyntheticEvent } from "react";
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { api, tratarErro } from "../api/axios";
+import { BotaoEnviar } from "../componentes/BotaoEnviar";
+import { CartaoDeFormulario } from "../componentes/CartaoDeFormulario";
 import { Campo } from "../componentes/Campo";
 import { useAuth } from "../contexto/AuthContext";
 import type { Usuario } from "../types";
@@ -59,18 +61,13 @@ export function LoginPage() {
     }
 
     return (
-        <form onSubmit={onFormSubmit} className="cartao" noValidate>
-            <img src="/favicon.svg" alt="" className="coracao" />
-            <h1>Entrar</h1>
+        <CartaoDeFormulario titulo="Entrar" onSubmit={onFormSubmit} coracao>
 
             <Campo label="E-mail" name="email" type="email" value={form.email} onChange={alterar} erro={erros.email} />
             <Campo label="Senha" name="senha" type="password" value={form.senha} onChange={alterar} erro={erros.senha} />
 
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? "Aguarde..." : "Entrar"}
-            </button>
+            <BotaoEnviar texto="Entrar" carregando={loading} />
 
-            <p>Ainda não tem conta? <Link to="/cadastro">Criar conta</Link></p>
-        </form>
+        </CartaoDeFormulario>
     );
 }

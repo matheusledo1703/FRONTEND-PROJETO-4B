@@ -2,6 +2,8 @@ import { useState } from "react";
 import type { SyntheticEvent } from "react";
 import { toast } from "react-toastify";
 import { api, tratarErro } from "../api/axios";
+import { BotaoEnviar } from "../componentes/BotaoEnviar";
+import { CartaoDeFormulario } from "../componentes/CartaoDeFormulario";
 import { Campo } from "../componentes/Campo";
 import { useAuth } from "../contexto/AuthContext";
 import type { Usuario } from "../types";
@@ -60,8 +62,7 @@ export function PerfilPage() {
     }
 
     return (
-        <form onSubmit={onFormSubmit} className="cartao" noValidate>
-            <h1>Meu perfil</h1>
+        <CartaoDeFormulario titulo="Meu perfil" onSubmit={onFormSubmit}>
 
             <Campo label="Nome completo" name="nome" value={form.nome} onChange={alterar} erro={erros.nome} />
             <Campo label="E-mail" name="email" value={usuario?.email ?? ""} onChange={() => {}} desabilitado dica="O e-mail não pode ser alterado." />
@@ -77,9 +78,7 @@ export function PerfilPage() {
             />
             <Campo label="Repita a senha" name="confirmarSenha" type="password" value={form.confirmarSenha} onChange={alterar} erro={erros.confirmarSenha} />
 
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? "Aguarde..." : "Salvar alterações"}
-            </button>
-        </form>
+            <BotaoEnviar texto="Salvar alterações" carregando={loading} />
+        </CartaoDeFormulario>
     );
 }

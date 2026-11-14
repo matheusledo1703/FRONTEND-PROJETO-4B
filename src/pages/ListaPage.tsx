@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { api, tratarErro } from "../api/axios";
+import { Paginacao } from "../componentes/Paginacao";
+import { Tabela } from "../componentes/Tabela";
+import { TopoDaPagina } from "../componentes/TopoDaPagina";
 import { RECURSOS } from "../recursos";
 import type { Recurso } from "../recursos";
 import type { Pagina, Registro } from "../types";
@@ -48,10 +51,9 @@ function Lista({ recurso }: { recurso: Recurso }) {
 
     return (
         <>
-            <div className="topo">
-                <h1>{recurso.titulo}</h1>
+            <TopoDaPagina titulo={recurso.titulo}>
                 <Link to={`/${recurso.caminho}/novo`} className="btn btn-primary">{recurso.novo}</Link>
-            </div>
+            </TopoDaPagina>
 
             {erro && <p className="aviso-erro">{erro}</p>}
             {!dados && !erro && <p>Carregando...</p>}
@@ -59,40 +61,19 @@ function Lista({ recurso }: { recurso: Recurso }) {
 
             {dados && dados.total > 0 && (
                 <>
-                    <div className="tabela-rolagem">
-                        <table>
-                            <thead>
-                                <tr>
-                                    {recurso.colunas.map((coluna) => (
-                                        <th key={coluna.titulo} className={coluna.direita ? "direita" : ""}>{coluna.titulo}</th>
-                                    ))}
-                                    <th className="direita">Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {dados.itens.map((item) => (
-                                    <tr key={item.id}>
-                                        {recurso.colunas.map((coluna) => (
-                                            <td key={coluna.titulo} className={coluna.direita ? "direita" : ""}>{coluna.valor(item)}</td>
-                                        ))}
-                                        <td className="direita acoes">
-                                            <Link to={`/${recurso.caminho}/${item.id}/editar`} className="btn btn-secondary btn-pequeno">Editar</Link>
-                                            <button className="btn btn-danger btn-pequeno" onClick={() => excluir(item)}>Excluir</button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    <Tabela
+                        colunas={recurso.colunas}
+                        itens={dados.itens}
+                        chave={(item) => item.id}
+                        acoes={(item) => (
+                            <>
+                                <Link to={`/${recurso.caminho}/${item.id}/editar`} className="btn btn-secondary btn-pequeno">Editar</Link>
+                                <button className="btn btn-danger btn-pequeno" onClick={() => excluir(item)}>Excluir</button>
+                            </>
+                        )}
+                    />
 
-                    <div className="paginacao">
-                        <span>{dados.total} registros</span>
-                        <div>
-                            <button className="btn btn-secondary btn-pequeno" disabled={pagina <= 1} onClick={() => setPagina(pagina - 1)}>Anterior</button>
-                            <span> Página {pagina} de {dados.totalDePaginas} </span>
-                            <button className="btn btn-secondary btn-pequeno" disabled={pagina >= dados.totalDePaginas} onClick={() => setPagina(pagina + 1)}>Próxima</button>
-                        </div>
-                    </div>
+                    <Paginacao pagina={pagina} totalDePaginas={dados.totalDePaginas} total={dados.total} onMudar={setPagina} />
                 </>
             )}
         </>

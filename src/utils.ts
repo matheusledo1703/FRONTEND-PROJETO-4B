@@ -55,10 +55,6 @@ const confirmarSenha = z.string().min(1, "Repita a senha.");
 
 const senhasIguais = { message: "As senhas não conferem.", path: ["confirmarSenha"] };
 
-export const cadastroSchema = z
-    .object({ nome, email, cpf, senha, confirmarSenha })
-    .refine((dados) => dados.senha === dados.confirmarSenha, senhasIguais);
-
 // Edição do usuário: sem e-mail, porque ele não pode mudar
 export const edicaoSchema = z
     .object({ nome, cpf, senha, confirmarSenha })
@@ -79,4 +75,57 @@ export function errosDoZod(erro: z.ZodError): Record<string, string> {
     }
 
     return erros;
+}
+
+// ---------- foto do produto ----------
+// A API não guarda foto: a imagem é reduzida aqui e fica salva neste navegador, ligada ao id do registro.
+const TAMANHO_MAXIMO_DA_FOTO = 5 * 1024 * 1024; // 5 MB
+
+export function lerFoto(caminho: string, id: number | string): string {
+    try {
+        return localStorage.getItem(`foto:${caminho}:${id}`) ?? "";
+    } catch {
+        return "";
+    }
+}
+
+// Sem foto (texto vazio) remove a que existia. Devolve false se o navegador não tiver espaço.
+export function guardarFoto(caminho: string, id: number | string, foto: string): boolean {
+    try {
+        if (foto) {
+            localStorage.setItem(`foto:${caminho}:${id}`, foto);
+        } else {
+            localStorage.removeItem(`foto:${caminho}:${id}`);
+        }
+
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+// Valida o arquivo e devolve a foto reduzida (JPEG de até 640px) como texto, pronta para guardar e mostrar
+export async function prepararFoto(arquivo: File): Promise<string> {
+    if (!arquivo.type.startsWith("image/")) throw new Error("Escolha um arquivo de imagem (JPG, PNG ou WebP).");
+    if (arquivo.size > TAMANHO_MAXIMO_DA_FOTO) throw new Error("A foto pode ter no máximo 5 MB.");
+
+    const imagem = await createImageBitmap(arquivo).catch(() => {
+        throw new Error("Não foi possível ler essa imagem.");
+    });
+
+    const escala = Math.min(1, 640 / Math.max(imagem.width, imagem.height));
+    const tela = document.createElement("canvas");
+    tela.width = Math.round(imagem.width * escala);
+    tela.height = Math.round(imagem.height * escala);
+
+    const contexto = tela.getContext("2d");
+    if (!contexto) throw new Error("Não foi possível processar essa imagem.");
+
+    // fundo branco: PNG com transparência não fica preto ao virar JPEG
+    contexto.fillStyle = "#FFFFFF";
+    contexto.fillRect(0, 0, tela.width, tela.height);
+    contexto.drawImage(imagem, 0, 0, tela.width, tela.height);
+    imagem.close();
+
+    return tela.toDataURL("image/jpeg", 0.82);
 }

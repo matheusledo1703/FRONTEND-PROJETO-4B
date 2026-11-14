@@ -1,10 +1,14 @@
 import { useEffect, useState } from "react";
-import type { ReactElement } from "react";
 import {
     Bar, BarChart, CartesianGrid, ComposedChart, Line, LineChart,
-    ResponsiveContainer, Scatter, Tooltip, XAxis, YAxis
+    Scatter, Tooltip, XAxis, YAxis
 } from "recharts";
 import { api, tratarErro } from "../api/axios";
+import { Grafico } from "../componentes/Grafico";
+import { Indicador } from "../componentes/Indicador";
+import { Tabela } from "../componentes/Tabela";
+import type { Coluna } from "../componentes/Tabela";
+import { TopoDaPagina } from "../componentes/TopoDaPagina";
 import type { Venda } from "../types";
 import { moeda, numero } from "../utils";
 
@@ -67,14 +71,24 @@ const ROSA = "#ff4f8b";
 const MENTA = "#12b48b";
 const TINTA = "#2a1840";
 
-function Grafico({ titulo, pergunta, conclusao, largo, children }: { titulo: string; pergunta: string; conclusao: string; largo?: boolean; children: ReactElement }) {
+type Resumo = { nome: string; valores: number[]; formatar: (valor: number) => string };
+
+// Tabela de estatística descritiva (mínimo, mediana, média, máximo e desvio padrão)
+function ResumoEstatistico({ resumos }: { resumos: Resumo[] }) {
+    const colunas: Coluna<Resumo>[] = [
+        { titulo: "Variável", valor: (r) => r.nome },
+        { titulo: "Mínimo", valor: (r) => r.formatar(Math.min(...r.valores)), direita: true },
+        { titulo: "Mediana", valor: (r) => r.formatar(mediana(r.valores)), direita: true },
+        { titulo: "Média", valor: (r) => r.formatar(media(r.valores)), direita: true },
+        { titulo: "Máximo", valor: (r) => r.formatar(Math.max(...r.valores)), direita: true },
+        { titulo: "Desvio padrão", valor: (r) => r.formatar(desvioPadrao(r.valores)), direita: true }
+    ];
+
     return (
-        <figure className={largo ? "grafico largo" : "grafico"}>
-            <h3>{titulo}</h3>
-            <p className="dica">{pergunta}</p>
-            <ResponsiveContainer width="100%" height={280}>{children}</ResponsiveContainer>
-            <p className="conclusao">{conclusao}</p>
-        </figure>
+        <>
+            <h2>Estatística descritiva</h2>
+            <Tabela colunas={colunas} itens={resumos} chave={(r) => r.nome} />
+        </>
     );
 }
 
@@ -106,31 +120,28 @@ export function EstatisticasPage() {
     const faixaMaior = faixas.reduce((a, b) => (b.pedidos > a.pedidos ? b : a));
     const melhorMes = porMes.reduce((a, b) => (b.valor > a.valor ? b : a));
     const faturamento = soma(totais);
+    const lucro = soma(vendas.map((v) => v.lucro));
     const reta = regressao(precos, quantidades);
 
     const pontos = vendas.map((v) => ({ x: v.precoUnitario, y: v.quantidade }));
     const extremos = [Math.min(...precos), Math.max(...precos)];
     const linhaDaReta = reta ? extremos.map((x) => ({ x, y: reta.inclinacao * x + reta.intercepto })) : [];
 
-    const resumos = [
+    const resumos: Resumo[] = [
         { nome: "Valor do pedido", valores: totais, formatar: moeda },
         { nome: "Unidades por pedido", valores: quantidades, formatar: (v: number) => numero(v, 1) }
     ];
 
     return (
         <>
-            <div className="topo">
-                <div>
-                    <h1>Painel de vendas</h1>
-                    <p className="dica">Quanto a loja vendeu, o que mais sai e como os pedidos se comportam.</p>
-                </div>
-            </div>
+            <TopoDaPagina titulo="Painel de vendas" subtitulo="Quanto a loja vendeu, o que mais sai e como os pedidos se comportam." />
 
             <section className="indicadores">
-                <div className="numero destaque"><span>Faturamento total</span><strong>{moeda(faturamento)}</strong><span>{vendas.length} pedidos</span></div>
-                <div className="numero"><span>Ticket médio</span><strong>{moeda(media(totais))}</strong><span>por pedido</span></div>
-                <div className="numero"><span>Unidades vendidas</span><strong>{numero(soma(quantidades), 0)}</strong><span>em {porProduto.length} produtos</span></div>
-                <div className="numero"><span>Produto mais vendido</span><strong>{porProduto[0].nome}</strong><span>{porProduto[0].valor} unidades</span></div>
+                <Indicador destaque titulo="Faturamento total" valor={moeda(faturamento)} detalhe={`${vendas.length} pedidos`} />
+                <Indicador titulo="Lucro total" valor={moeda(lucro)} detalhe={`margem de ${numero((lucro / faturamento) * 100, 0)}%`} />
+                <Indicador titulo="Ticket médio" valor={moeda(media(totais))} detalhe="por pedido" />
+                <Indicador titulo="Unidades vendidas" valor={numero(soma(quantidades), 0)} detalhe={`em ${porProduto.length} produtos`} />
+                <Indicador titulo="Produto mais vendido" valor={porProduto[0].nome} detalhe={`${porProduto[0].valor} unidades`} />
             </section>
 
             <div className="graficos">
@@ -190,26 +201,7 @@ export function EstatisticasPage() {
                 </Grafico>
             </div>
 
-            <h2>Estatística descritiva</h2>
-            <div className="tabela-rolagem">
-                <table>
-                    <thead>
-                        <tr><th>Variável</th><th className="direita">Mínimo</th><th className="direita">Mediana</th><th className="direita">Média</th><th className="direita">Máximo</th><th className="direita">Desvio padrão</th></tr>
-                    </thead>
-                    <tbody>
-                        {resumos.map(({ nome, valores, formatar }) => (
-                            <tr key={nome}>
-                                <td>{nome}</td>
-                                <td className="direita">{formatar(Math.min(...valores))}</td>
-                                <td className="direita">{formatar(mediana(valores))}</td>
-                                <td className="direita">{formatar(media(valores))}</td>
-                                <td className="direita">{formatar(Math.max(...valores))}</td>
-                                <td className="direita">{formatar(desvioPadrao(valores))}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+            <ResumoEstatistico resumos={resumos} />
         </>
     );
 }
