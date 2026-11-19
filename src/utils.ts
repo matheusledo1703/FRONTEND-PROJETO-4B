@@ -55,6 +55,11 @@ const confirmarSenha = z.string().min(1, "Repita a senha.");
 
 const senhasIguais = { message: "As senhas não conferem.", path: ["confirmarSenha"] };
 
+// Cadastro: todos os campos obrigatórios, com confirmação de senha (a confirmação não vai para a API)
+export const cadastroSchema = z
+    .object({ nome, email, cpf, senha, confirmarSenha })
+    .refine((dados) => dados.senha === dados.confirmarSenha, senhasIguais);
+
 // Edição do usuário: sem e-mail, porque ele não pode mudar
 export const edicaoSchema = z
     .object({ nome, cpf, senha, confirmarSenha })

@@ -4,27 +4,29 @@ import { api } from "../api/axios";
 import type { Pagina, Registro } from "../types";
 import { lerFoto, moeda } from "../utils";
 
-type Item = { id: number; nome: string; descricao: string; preco: number; imagem: string; destaque?: string };
+type Item = { id: number; nome: string; descricao: string; preco: number; imagem: string };
 
-// Vitrine de exemplo: só aparece se a API não responder
-const VITRINE: Item[] = [
-    { id: 1, nome: "Doce Outono", descricao: "Edição comum", preco: 299.99, imagem: "/imgs/figura1.jpg", destaque: "Mais vendido" },
-    { id: 2, nome: "Hatsune Miku Dia da Arte", descricao: "Edição comum", preco: 199.99, imagem: "/imgs/figura2.jpg" },
-    { id: 3, nome: "Hatsune Miku Alice no País das Maravilhas", descricao: "Edição limitada", preco: 1500.99, imagem: "/imgs/figura3.jpg", destaque: "Novo" },
-    { id: 4, nome: "Quadros em Pixel Art", descricao: "Quadrinho personalizado em pixel art!", preco: 100, imagem: "/imgs/quadroPixelArt.jpg" },
-    { id: 5, nome: "Chaveiros", descricao: "Chaveirinhos diversos.", preco: 20, imagem: "/imgs/chaveiros.jpg" },
-    { id: 6, nome: "Stands de Acrílico", descricao: "Acrílicos dos seus personagens favoritos!", preco: 40, imagem: "/imgs/standAcrilico.jpg" }
+// ONDE TROCAR AS IMAGENS DOS PRODUTOS:
+// 1) Coloque o arquivo na pasta frontend/public/imgs/
+// 2) Ligue a imagem a uma palavra do nome do produto na lista abaixo (a primeira que bater vale).
+// Uma foto enviada no cadastro do produto (painel Admin) tem prioridade sobre esta lista.
+const IMAGENS_POR_PALAVRA: { palavra: string; imagem: string }[] = [
+    { palavra: "chaveiro", imagem: "/imgs/chaveiros.jpg" },
+    { palavra: "stand", imagem: "/imgs/standAcrilico.jpg" },
+    { palavra: "quadro", imagem: "/imgs/quadroPixelArt.jpg" },
+    { palavra: "poster", imagem: "/imgs/quadroPixelArt.jpg" },
+    { palavra: "pôster", imagem: "/imgs/quadroPixelArt.jpg" },
+    { palavra: "pixel", imagem: "/imgs/quadroPixelArt.jpg" }
 ];
 
-// A API não guarda foto: usa a enviada no cadastro (salva no navegador) ou escolhe pelo nome do produto
+// Imagens usadas quando nenhuma palavra bate (alternam pela posição do produto)
+const IMAGENS_PADRAO = ["/imgs/figura1.jpg", "/imgs/figura2.jpg", "/imgs/figura3.jpg"];
+
 function imagemDoProduto(nome: string, posicao: number): string {
-    const n = nome.toLowerCase();
+    const minusculo = nome.toLowerCase();
+    const achada = IMAGENS_POR_PALAVRA.find(({ palavra }) => minusculo.includes(palavra));
 
-    if (n.includes("chaveiro")) return "/imgs/chaveiros.jpg";
-    if (n.includes("stand")) return "/imgs/standAcrilico.jpg";
-    if (n.includes("quadro") || n.includes("poster") || n.includes("pixel")) return "/imgs/quadroPixelArt.jpg";
-
-    return `/imgs/figura${(posicao % 3) + 1}.jpg`;
+    return achada ? achada.imagem : IMAGENS_PADRAO[posicao % IMAGENS_PADRAO.length];
 }
 
 function doRegistro(produto: Registro, posicao: number): Item {
@@ -42,7 +44,6 @@ function doRegistro(produto: Registro, posicao: number): Item {
 function CartaoDeProduto({ item }: { item: Item }) {
     return (
         <article className="produto">
-            {item.destaque && <span className="etiqueta">{item.destaque}</span>}
             <div className="moldura">
                 <img src={item.imagem} alt={item.nome} loading="lazy" />
             </div>
@@ -62,13 +63,14 @@ function CartaoDeProduto({ item }: { item: Item }) {
 export function LojaPage() {
     const [produtos, setProdutos] = useState<Item[]>([]);
     const [carregando, setCarregando] = useState(true);
+    const [indisponivel, setIndisponivel] = useState(false);
 
     // A loja é pública: a rota /vitrine da API não exige login e só devolve dados seguros (sem custo).
-    // Se a API falhar, mostra a vitrine de exemplo.
+    // Só mostra o que está no banco. Se a API ou o banco estiverem fora do ar, avisa que a vitrine está indisponível.
     useEffect(() => {
         api.get<Pagina<Registro>>("/vitrine", { params: { pagina: 1, limite: 12 } })
             .then((resposta) => setProdutos(resposta.data.itens.map(doRegistro)))
-            .catch(() => setProdutos(VITRINE))
+            .catch(() => setIndisponivel(true))
             .finally(() => setCarregando(false));
     }, []);
 
@@ -85,7 +87,8 @@ export function LojaPage() {
                 <p className="dica">Direto do nosso estoque.</p>
 
                 {carregando && <p className="dica">Carregando produtos...</p>}
-                {!carregando && produtos.length === 0 && <p className="dica">Nenhum produto disponível no momento.</p>}
+                {indisponivel && <p className="dica">Vitrine indisponível no momento. Tente novamente em instantes.</p>}
+                {!carregando && !indisponivel && produtos.length === 0 && <p className="dica">Nenhum produto disponível no momento.</p>}
 
                 <div className="grade-produtos">
                     {produtos.map((item) => <CartaoDeProduto key={item.id} item={item} />)}

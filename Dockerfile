@@ -1,18 +1,13 @@
-FROM node:22-alpine AS construcao
+FROM node:22-alpine
+
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY package*.json ./
 RUN npm install
 
 COPY . .
 
-# Endereço da API que o navegador vai chamar
-ARG VITE_URL_DA_API=http://localhost:3000/api
-ENV VITE_URL_DA_API=$VITE_URL_DA_API
+ENV VITE_URL_DA_API=/api
 
-RUN npm run build
-
-FROM nginx:alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=construcao /app/dist /usr/share/nginx/html
-EXPOSE 80
+EXPOSE 3000
+CMD ["npm", "run", "dev", "--", "--host"]
