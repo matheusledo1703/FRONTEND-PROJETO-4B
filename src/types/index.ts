@@ -3,6 +3,7 @@ export type Usuario = {
   nome: string;
   email: string;
   cpf: string;
+  papel?: string;
 };
 
 // Resposta paginada da API

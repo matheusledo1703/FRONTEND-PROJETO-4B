@@ -5,6 +5,7 @@ import { ToastContainer } from 'react-toastify'
 import './index.css'
 import { Header } from './componentes/Header.tsx'
 import { AuthProvider, RotaProtegida } from './contexto/AuthContext.tsx'
+import { CadastroPage } from './pages/CadastroPage.tsx'
 import { FormPage } from './pages/FormPage.tsx'
 import { ListaPage } from './pages/ListaPage.tsx'
 import { LojaPage } from './pages/LojaPage.tsx'
@@ -27,6 +28,7 @@ createRoot(document.getElementById('root')!).render(
           <Routes>
             <Route path='/' element={<LojaPage />} />
             <Route path='/login' element={<LoginPage />} />
+            <Route path='/cadastro' element={<CadastroPage />} />
 
             {/* Só com login: o botão Admin da loja cai aqui */}
             <Route element={<RotaProtegida />}>

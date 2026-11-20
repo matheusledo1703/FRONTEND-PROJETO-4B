@@ -62,5 +62,10 @@ export function RotaProtegida() {
         return <Navigate to="/login" replace state={{ de: local.pathname }} />;
     }
 
+    // Cliente comum só acessa o próprio perfil; o resto da área protegida é do admin
+    if (usuario.papel !== "admin" && local.pathname !== "/perfil") {
+        return <Navigate to="/" replace />;
+    }
+
     return <Outlet />;
 }

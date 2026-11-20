@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { SyntheticEvent } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { api, tratarErro } from "../api/axios";
 import { BotaoEnviar } from "../componentes/BotaoEnviar";
@@ -23,7 +23,7 @@ export function LoginPage() {
     const [loading, setLoading] = useState(false);
 
     // Quem já está logado não precisa do login
-    if (usuario) return <Navigate to={estado.de ?? "/estatisticas"} replace />;
+    if (usuario) return <Navigate to={estado.de ?? (usuario.papel === "admin" ? "/estatisticas" : "/")} replace />;
 
     function alterar(campo: string, valor: string) {
         setForm({ ...form, [campo]: valor });
@@ -46,7 +46,7 @@ export function LoginPage() {
             const resposta = await api.post<{ token: string; usuario: Usuario }>("/login", form);
 
             entrar(resposta.data.token, resposta.data.usuario); // salva o token no localStorage
-            navigate(estado.de ?? "/estatisticas", { replace: true }); // área logada
+            navigate(estado.de ?? (resposta.data.usuario.papel === "admin" ? "/estatisticas" : "/"), { replace: true }); // área logada
         } catch (erro) {
             const { mensagem, campo } = tratarErro(erro);
 
@@ -67,6 +67,7 @@ export function LoginPage() {
             <Campo label="Senha" name="senha" type="password" value={form.senha} onChange={alterar} erro={erros.senha} />
 
             <BotaoEnviar texto="Entrar" carregando={loading} />
+            <p>Não tem conta? <Link to="/cadastro">Cadastre-se</Link></p>
 
         </CartaoDeFormulario>
     );

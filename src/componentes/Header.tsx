@@ -29,9 +29,21 @@ export function Header() {
                 </Link>
 
                 <nav className="nav">
-                    <a href="#produtos">Produtos</a>
-                    <Link to="/admin" className="btn btn-primary btn-pequeno">Admin</Link>
-                </nav>
+    <a href="#produtos">Produtos</a>
+    {usuario ? (
+        <>
+            <Link to="/perfil">Olá, {usuario.nome.split(" ")[0]}</Link>
+            {usuario.papel === "admin" && <Link to="/admin" className="btn btn-primary btn-pequeno">Admin</Link>}
+            <button className="btn btn-secondary btn-pequeno" onClick={onSair}>Sair</button>
+        </>
+    ) : (
+        <>
+            <Link to="/login">Entrar</Link>
+            <Link to="/cadastro">Cadastrar</Link>
+            <Link to="/admin" className="btn btn-primary btn-pequeno">Admin</Link>
+        </>
+    )}
+</nav>
             </header>
         );
     }
@@ -46,7 +58,7 @@ export function Header() {
             <nav className="nav">
                 {usuario
                     ? LINKS_ADMIN.map(([para, texto]) => <NavLink key={para} to={para}>{texto}</NavLink>)
-                    : [["/login", "Entrar"]].map(([para, texto]) => <NavLink key={para} to={para}>{texto}</NavLink>)}
+                    : [["/login", "Entrar"], ["/cadastro", "Cadastrar"]].map(([para, texto]) => <NavLink key={para} to={para}>{texto}</NavLink>)}
             </nav>
 
             <div className="nav">

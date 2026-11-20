@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import { api } from "../api/axios";
+import { api, tratarErro } from "../api/axios";
+import { useAuth } from "../contexto/AuthContext";
 import type { Pagina, Registro } from "../types";
 import { lerFoto, moeda } from "../utils";
 
@@ -11,12 +13,14 @@ type Item = { id: number; nome: string; descricao: string; preco: number; imagem
 // 2) Ligue a imagem a uma palavra do nome do produto na lista abaixo (a primeira que bater vale).
 // Uma foto enviada no cadastro do produto (painel Admin) tem prioridade sobre esta lista.
 const IMAGENS_POR_PALAVRA: { palavra: string; imagem: string }[] = [
-    { palavra: "chaveiro", imagem: "/imgs/chaveiros.jpg" },
-    { palavra: "stand", imagem: "/imgs/standAcrilico.jpg" },
-    { palavra: "quadro", imagem: "/imgs/quadroPixelArt.jpg" },
-    { palavra: "poster", imagem: "/imgs/quadroPixelArt.jpg" },
-    { palavra: "pôster", imagem: "/imgs/quadroPixelArt.jpg" },
-    { palavra: "pixel", imagem: "/imgs/quadroPixelArt.jpg" }
+    { palavra: "cidade", imagem: "/imgs/cidadeNeon.jpg" },
+    { palavra: "floresta", imagem: "/imgs/florestaEncantada.png" },
+    { palavra: "fantasma", imagem: "/imgs/fantasma.png" },
+    { palavra: "coração", imagem: "/imgs/coracaoPixel.png" },
+    { palavra: "raposa", imagem: "/imgs/peluciaRaposa.png" },
+    { palavra: "coelho", imagem: "/imgs/peluciaCoelho.png" },
+    { palavra: "dragão", imagem: "/imgs/dragao.jpg" },
+    { palavra: "gato", imagem: "/imgs/gato.jpg" }
 ];
 
 // Imagens usadas quando nenhuma palavra bate (alternam pela posição do produto)
@@ -42,6 +46,30 @@ function doRegistro(produto: Registro, posicao: number): Item {
 }
 
 function CartaoDeProduto({ item }: { item: Item }) {
+    const { usuario } = useAuth();
+    const navigate = useNavigate();
+    const [comprando, setComprando] = useState(false);
+
+    async function comprar() {
+        // Visitante: vai para o login e volta para a loja depois
+        if (!usuario) {
+            toast.info("Entre ou crie uma conta para comprar.");
+            navigate("/login", { state: { de: "/" } });
+            return;
+        }
+
+        setComprando(true);
+
+        try {
+            await api.post("/compras", { produtoId: item.id, quantidade: 1 });
+            toast.success(`Pedido de "${item.nome}" realizado!`);
+        } catch (erro) {
+            toast.error(tratarErro(erro).mensagem);
+        } finally {
+            setComprando(false);
+        }
+    }
+
     return (
         <article className="produto">
             <div className="moldura">
@@ -50,11 +78,8 @@ function CartaoDeProduto({ item }: { item: Item }) {
             <h3>{item.nome}</h3>
             <p className="dica">{item.descricao}</p>
             <strong className="preco">{moeda(item.preco)}</strong>
-            <button
-                className="btn btn-primary"
-                onClick={() => toast.info("Carrinho em breve! Por enquanto os pedidos são registrados no painel Admin.")}
-            >
-                Comprar
+            <button className="btn btn-primary" onClick={comprar} disabled={comprando}>
+                {comprando ? "Enviando..." : "Comprar"}
             </button>
         </article>
     );
